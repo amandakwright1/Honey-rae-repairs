@@ -2,8 +2,11 @@ import { useEffect, useState } from "react"
 import "./Tickets.css"
 import { useNavigate } from "react-router-dom"
 
-export const TicketList = () => {
+import { Ticket } from "./Ticket"
+
+export const TicketList = ({searchTermState}) => {
     const [tickets, setTickets] = useState([])
+    const [employees, setEmployees] = useState([])
     const [filteredTickets, setFiltered] = useState([])
     const [emergency, setEmergency] = useState(false)
     const [openOnly, updateOpenOnly] = useState(false)
@@ -13,6 +16,17 @@ export const TicketList = () => {
 
 const localHoneyUser =localStorage.getItem ("honey_user")
 const honeyUserObject = JSON.parse(localHoneyUser)//OBJ with 2 keys -id and staff.
+
+//filters tickets by search terms entered in field box.tolowercase makes it to where it's not case sensitive.
+useEffect(
+    () => {
+        const searchedTickets = tickets.filter(ticket =>{
+           return ticket.description.toLowerCase().startsWith(searchTermState.toLowerCase())})
+
+        setFiltered(searchedTickets)
+        },
+    [searchTermState]
+)
 
 useEffect(
     () => {
@@ -27,15 +41,30 @@ useEffect(
     [emergency]
 )
 
+const getAllTickets = () => {
+    fetch (`http://localhost:8088/serviceTickets?_embed=employeeTickets`)
+    .then(response => response.json())
+    .then(ticketArray => {
+        setTickets (ticketArray)
+    })
+}
+
+
+
+
+
+//this UE runs after inital state is set and gets all the info we need from permanent state(the API)
     useEffect(
         () => {
-            fetch (`http://localhost:8088/serviceTickets`)
+            getAllTickets()
+          
+            fetch (`http://localhost:8088/employees?_expand=user`)
             .then(response => response.json())
-            .then(ticketArray => {
-                setTickets (ticketArray)})
+            .then(employeeArray => {
+                setEmployees (employeeArray)
+            })
             },
         
-            //console.log("Initial state of tickets", tickets) // View the initial state of tickets
         
         [] // When this array is empty, you are observing initial component state
     )
@@ -65,6 +94,7 @@ useEffect(
 }
 else {
     const myTickets = tickets.filter(ticket => ticket.userId === honeyUserObject.id)
+
     setFiltered(myTickets)
 }
     },
@@ -74,7 +104,7 @@ else {
 
 //makes a button-- only on staff profile--that when clicked lists emergency tickets.<--emergency only button
 //makes a Show all button that shows all tickets on staff profile.
-    return<>
+    return <>
     {
         honeyUserObject.staff
         ?<>
@@ -93,17 +123,15 @@ else {
     <article className="tickets">
             {
                 filteredTickets.map(
-                    (ticket) => {
-                        return <section className="ticket" key={`ticket--${ticket.id}`}>
-                                <header>{ticket.description}</header>
-                                <footer>Emergency: {ticket.emergency ? "🧨" : "No"}</footer>
-                            </section>
-                    }
+                    (ticket) =>  <Ticket employees={employees} 
+                    getAllTickets={getAllTickets}
+                    currentUser={honeyUserObject}
+                    ticketObject={ticket} /> 
                 )
             }
         </article>
     </>
 
-// return a list of products sort products by name in ascending order
+
 
         }
